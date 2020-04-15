@@ -1,0 +1,21 @@
+id: 15ebe601-d051-457f-97ba-a336c4121833
+name: Detect user consent into a Azure AD application
+description: |
+  This rule will trigger once a user logs into an application
+severity: Low
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - AuditLogs
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+relevantTechniques:
+query: |
+  AuditLogs
+  | where OperationName == 'Consent to application'
+  | extend applicationDetails = parse_json(TargetResources)[0]
+  | extend appname = parse_json(applicationDetails)['displayName']
+  | extend scope = parse_json(applicationDetails)['modifiedProperties'][4]["newValue"]

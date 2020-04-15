@@ -1,0 +1,22 @@
+id: 3215129a-e4f1-4f26-98f7-ae268158be3d
+name: Detect admin consent into a Azure AD application
+description: |
+  This rule will trigger once a admin logs into an application
+severity: Low
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - AuditLogs
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+relevantTechniques:
+query: |
+  AuditLogs
+    | where OperationName == 'Consent to application'
+    | extend applicationDetails = parse_json(TargetResources)[0]
+    | extend appname = parse_json(applicationDetails)['displayName']
+    | extend IsAdmin = parse_json(applicationDetails)['modifiedProperties'][0]["newValue"]
+    | where IsAdmin == '"True"'

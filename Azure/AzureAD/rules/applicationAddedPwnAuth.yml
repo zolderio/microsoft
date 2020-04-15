@@ -1,0 +1,21 @@
+id: 83ba3057-9ea3-4759-bf6a-933f2e5bc7ee
+name: Detect Azure AD application added with default PwnAuth callback
+description: |
+  This rule will trigger once an application is added with the default PwnAuth callback path.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - AuditLogs
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+relevantTechniques:
+query: |
+  AuditLogs
+  | where (OperationName == "Add application") or (OperationName == "Update application")
+  | extend details = parse_json(TargetResources[0])
+  | extend properties = parse_json(details["modifiedProperties"][0])
+  | where properties["newValue"] contains "/oauth/api/microsoft/callback"

@@ -1,0 +1,19 @@
+id: 640400b2-182d-4686-abea-1325e25c6e0c
+name: Detect Azure AD application added
+description: |
+  This rule will trigger once an application is added to the Azure AD tenant.
+severity: Low
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - AuditLogs
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+relevantTechniques:
+query: |
+  AuditLogs
+  | where (OperationName == "Add application") or (OperationName == "Update application")
+

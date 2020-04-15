@@ -1,0 +1,1 @@
+Get-MsolCompanyInformation | select UsersPermissionToCreateLOBAppsEnabled

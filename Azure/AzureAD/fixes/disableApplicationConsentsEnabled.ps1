@@ -1,0 +1,1 @@
+Set-MsolCompanySettings -UsersPermissionToUserConsentToAppEnabled:$false
