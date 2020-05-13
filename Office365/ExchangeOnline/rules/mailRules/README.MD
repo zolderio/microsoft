@@ -2,6 +2,8 @@
 
 This repository contains tools published by [Zolder](https://zolder.io). The tools can be used to secure a Microsoft Cloud environment, for example Office 365 or Azure. The main goal is to share useful tools that we built to detect threats or harden the configuration of a Microsoft tenant.
 
+The blog related to these scripts can be found here: [https://zolder.io/2020/05/13/office-365-exchange-rules/](https://zolder.io/2020/05/13/office-365-exchange-rules/)
+
 # Different Rules
 
 The rules in this folder look for different types of inbox rules or other ways of exfiltrating emails. In order to minimize false posititves we try to determine where the email is going. If the domain is not in the whitelist our rule triggers. **be sure to update the whitelist**
