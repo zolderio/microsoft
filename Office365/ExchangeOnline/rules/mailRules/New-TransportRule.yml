@@ -1,0 +1,29 @@
+id: 2f6776fa-8a05-4cd7-866d-079b6e9242db
+name: email forward enabled to an external source (TransportRule)
+description: |
+  This rule will trigger when an account sets email forward enabled to an external source. Could be a regular administrative action. Could also be an attacker backdooring the email account of a compromised users. 
+  Investigation required. Rule part of a set of rules made to detect forwarding. This can only be set by an administrative user, if true positive it could mean the attacker has administrative access to atleast exchange.
+severity: High
+requiredDataConnectors:
+  - connectorId: Office356
+    dataTypes:
+      - OfficeActivity
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt 
+triggerThreshold: 0
+tactics:
+  - Persistence
+  - Exfiltration
+relevantTechniques:
+  - T1114
+query: |
+  let TimeFrame = 1d;
+  let domains = dynamic(["zolder.io" "rwxsecurity.nl"]);
+  OfficeActivity
+  | where Operation == "New-TransportRule"
+  | extend details = parse_json(Parameters)
+  | extend type = tostring(details[4].Name)
+  | extend forwardaddr = tostring(details[4].Value)
+  | extend forwarddomain = tostring(split(forwardaddr, "@")[1])
+  | where isempty(forwarddomain) == false and forwarddomain !in (domains)

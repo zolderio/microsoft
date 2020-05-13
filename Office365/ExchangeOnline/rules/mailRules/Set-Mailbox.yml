@@ -1,0 +1,31 @@
+id: a8369b34-f3fd-40a6-9561-477ab0451726
+name: email forward enabled to an external source (SMTP)
+description: |
+  This rule will trigger when an account sets email forward enabled to an external source. Could be a regular administrative action. Could also be an attacker backdooring the email account of a compromised users. 
+  Investigation required. Rule part of a set of rules made to detect forwarding.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: Office356
+    dataTypes:
+      - OfficeActivity
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt 
+triggerThreshold: 0
+tactics:
+  - Persistence
+  - Exfiltration
+relevantTechniques:
+  - T1114
+query: |
+  let TimeFrame = 1d;
+  let domains = dynamic(["zolder.io" "rwxsecurity.nl"]);
+  OfficeActivity
+  | where TimeGenerated >= ago(TimeFrame) 
+  | where Operation == "Set-Mailbox"
+  | extend details = parse_json(Parameters)
+  | extend type = tostring(details[1].Name)
+  | where type == "ForwardingSmtpAddress"
+  | extend forwardaddr = tostring(details[1].Value) 
+  | extend forwarddomain = tostring(split(forwardaddr, "@")[1])
+  | where isempty(forwarddomain) == false and forwarddomain !in (domains)

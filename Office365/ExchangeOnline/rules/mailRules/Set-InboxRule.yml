@@ -1,0 +1,31 @@
+id: 6b0ce3e5-f178-4892-8324-19fcfdeef9f1
+name: modify existing rule to create a forwarding rule (ForwardTo/ForwardAsAttachmentTo/RedirectTo)
+description: |
+  This rule will trigger when an account sets email forward enabled to an external source. Could be a regular administrative action. Could also be an attacker backdooring the email account of a compromised users. 
+  Investigation required. Rule part of a set of rules made to detect forwarding.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: Office356
+    dataTypes:
+      - OfficeActivity
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt 
+triggerThreshold: 0
+tactics:
+  - Persistence
+  - Exfiltration
+relevantTechniques:
+  - T1114
+query: |
+  let TimeFrame = 1d;
+  let domains = dynamic(["zolder.io" "rwxsecurity.nl"]);
+  OfficeActivity
+  | where TimeGenerated >= ago(TimeFrame) 
+  | where Operation == "Set-InboxRule"
+  | extend details = parse_json(Parameters)
+  | extend ruletype = tostring(details[0].Name) 
+  | where ruletype in ( "ForwardTo" , "ForwardAsAttachmentTo", "RedirectTo")
+  | extend forwardaddr = tostring(details[0].Value) 
+  | extend forwarddomain = tostring(split(forwardaddr, "@")[1])
+  | where isempty(forwarddomain) == false and forwarddomain !in (domains)
