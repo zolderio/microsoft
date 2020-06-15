@@ -1,0 +1,31 @@
+id: 83ba3057-9ea3-4759-bf6a-933f2e5bc7ee
+name: BEC Fraud rule sees forwarding rules to external email adresses.
+description: |
+  Checks to see if mail rules are created taht forward to an external email address if the subject or body contains a specific wordt.  Confidence goes up if emails one of the words that the rule looks for is something related to payments and invoices.
+severity: High
+requiredDataConnectors:
+  - connectorId: Office365
+    dataTypes:
+      - OfficeActivity
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt 
+triggerThreshold: 0
+tactics:
+  - Persistence
+relevantTechniques:
+  - T1089
+query: |
+  let domains = dynamic(["zolder.io" "rwxsecurity.nl"]);
+  OfficeActivity
+  | where Operation == "New-InboxRule" or Operation == "Set-InboxRule"
+  | extend details = parse_json(Parameters)
+  | extend ruletype = tostring(details[2].Name)
+  | where  ruletype in ("RedirectTo", "ForwardTo", "ForwardAsAttachmentTo")
+  | extend triggertype = details[4].Name
+  | where triggertype in ("SubjectOrBodyContainsWords", "SubjectContainsWords", "BodyContainsWords")
+  | extend triggerlist = tostring(parse_json(details[4].Value))
+  | extend confidence = case(triggerlist has "factuur" or triggerlist has "betaling", "high", triggerlist has "aanmaning" or triggerlist has "invoice", "high", triggerlist has "overboeking" or triggerlist has "payment", "high", "low")
+  | extend forwardaddr = tostring(details[2].Value) 
+  | extend forwarddomain = tostring(split(forwardaddr, "@")[1])
+  | where isempty(forwarddomain) == false and forwarddomain !in (domains)

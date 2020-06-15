@@ -1,0 +1,28 @@
+id: 83ba3057-9ea3-4759-bf6a-933f2e5bc7ee
+name: BEC Fraud rule from sender move to folder
+description: |
+ Checks to see if mail rules are created that move emails to a suspicious folder based on the senders adress. Confidence goes up if emails are automatically marked as read.
+severity: High
+requiredDataConnectors:
+  - connectorId: Office365
+    dataTypes:
+      - OfficeActivity
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt 
+triggerThreshold: 0
+tactics:
+  - Persistence
+relevantTechniques:
+  - T1089
+query: |
+  OfficeActivity
+  | where Operation == "New-InboxRule" or Operation == "Set-InboxRule"
+  | extend details = parse_json(Parameters)
+  | extend ruletype = tostring(details[3].Name)
+  | where ruletype in ( "MoveToFolder")
+  | extend moveto = tostring(details[3].Value)
+  | where  moveto in ("Junk Email","Conversation History","RSS Subscriptions", "Archive")
+  | extend markasread = tostring(details[5].Name)
+  | extend markread = tostring(details[5].Value)
+  | extend confidence = case(markread has "True" and markasread == "MarkAsRead", "high", "low")
