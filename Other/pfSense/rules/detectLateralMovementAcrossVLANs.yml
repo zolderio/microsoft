@@ -1,0 +1,45 @@
+id: 498a6f0c-a5e5-4b6d-b506-f4d1deef42a2
+name: Detect lateral movement across VLAN's    
+description: |
+  Used to trigger alerts on blocked connections between VLAN's. 
+  Can be configured using the "systems" variable
+severity: High
+requiredDataConnectors:
+  - connectorId: Syslog
+    dataTypes:
+      - Syslog
+queryFrequency: 5M
+queryPeriod: 5M
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - LateralMovement
+relevantTechniques:
+query: |
+    // Configure the systems dynamic with the systems or subnets you would like to monitor as the key.
+    // The value is a threshold on how many blocked connection a alert needs to be generated.
+    // Example: use zero for crown juwel systems or networks. Use 50 for regular networks you would like to monitor.
+    let systems = dynamic(
+    {
+        "10.0.4.0/24": 50,
+        "10.0.3.0/24": 50,
+        "10.0.2.0/24": 50,
+        "10.0.1.0/24": 50,
+        "10.0.0.0/24": 0
+    });
+    Syslog
+    | extend CSVFields  = split(SyslogMessage, ',')
+    | extend Interface = CSVFields[4]
+    | extend Action = CSVFields[6]
+    | where Action == "block"
+    | extend SrcIp = CSVFields[18]
+    | extend DstIp = CSVFields[19]
+    | where DstIp !contains ".255"
+    | extend SrcPort = CSVFields[20]
+    | extend DstPort = CSVFields[21]
+    | mv-expand bagexpansion=array system = systems
+    | extend cidr = system[0]
+    | extend threshold = system[1]
+    | where ipv4_is_match(tostring(DstIp), tostring(cidr))
+    | summarize amount = count() by tostring(SrcIp), tostring(DstIp), tostring(cidr), tostring(threshold)
+    | where amount > tolong(threshold)
