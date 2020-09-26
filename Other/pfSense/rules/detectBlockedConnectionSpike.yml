@@ -1,0 +1,39 @@
+id: 19d62d45-a4aa-4748-ba45-589b387766fe
+name: Detect a unusual amount of blocked network connections    
+description: |
+  This rule will trigger once a spike in blocked connections occur.
+  Currently it calculates the average blocked connection in past 14 days (per day).
+  If two times the average occurs on one day an alert will be produced.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: Syslog
+    dataTypes:
+      - Syslog
+queryFrequency: 1H
+queryPeriod: 14D
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - LateralMovement
+relevantTechniques:
+query: |
+    // This query alerts whenever a spike of blocked connections is seen
+    let average = materialize( 
+        Syslog
+        | extend CSVFields  = split(SyslogMessage, ',')
+        | extend Action = CSVFields[6]
+        | where Action == "block"
+        | summarize c = count() by bin(TimeGenerated, 1d)
+        | summarize average_connections = avg(c) by join_key = ''
+    );
+    let today = materialize (
+        Syslog 
+        | where TimeGenerated > ago(1d) 
+        | extend CSVFields  = split(SyslogMessage, ',')
+        | extend Action = CSVFields[6]
+        | where Action == "block"
+        | summarize today_connections = count() by join_key = ''
+    );
+    average
+    | join today on join_key
+    | where today_connections > (average_connections * 2)
