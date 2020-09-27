@@ -33,28 +33,32 @@ az monitor diagnostic-settings create --name  $diagnosticsettings --resource $kv
 
 ##  some secrets to spread around
 
-Write-Host "################## So now we can spread our tokens: ##################"
-Write-Host "ClientId: " + $json.appId
-Write-Host "Secret: " + $json.password
-Write-Host "tenant id " + $json.tenant
-Write-Host "Vault URL: " + $kv.properties.vaultUri
-Write-Host "#######################################################################################"
+Write-Host "[*]Printing the tokens:" -ForeGroundColor yellow
+Write-Host "ClientId: " -NoNewline
+Write-Host  $json.appId -ForeGroundColor RED
+Write-Host "Secret: " -NoNewline
+Write-Host  $json.password -ForeGroundColor RED
+Write-Host "TenantID:" -NoNewline
+Write-Host $json.tenant -ForeGroundColor RED
+Write-Host "Vault URL: " -NoNewline
+Write-Host $kv.properties.vaultUri -ForeGroundColor RED
+Write-Host ""
 
 ## What to look for:
 
-Write-Host "################## Use theys queries to detect misuse: ##################"
-Write-Host "Someone using our keyvault"
+Write-Host "[*]Generating the KQL queries to detect token usage" -ForeGroundColor yellow
+Write-Host "Someone using our keyvault: "
 Write-Host @"
 AzureDiagnostics 
 | where ResourceType  == "VAULTS"
 | where Resource  == "$keyvault"
 | where OperationName  in ("SecretGet","Authentication", "SecretList")
 | order by TimeGenerated desc
-"@
-Write-Host "#######################################################################################"
-Write-Host "Someone lopgging into AzureAD with our Service Principal (make sure to enable service principal signins)"
+"@ -ForeGroundColor blue
+Write-Host ""
+Write-Host "Someone logging into AzureAD with our Service Principal (make sure to enable service principal signins):"
 Write-Host @"
 AADServicePrincipalSignInLogs
 | where ServicePrincipalName == "$servicePrincipal"
-"@
+"@ -ForeGroundColor blue
 
