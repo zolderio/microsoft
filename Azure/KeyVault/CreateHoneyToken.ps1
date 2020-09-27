@@ -40,3 +40,21 @@ Write-Host "tenant id " + $json.tenant
 Write-Host "Vault URL: " + $kv.properties.vaultUri
 Write-Host "#######################################################################################"
 
+## What to look for:
+
+Write-Host "################## Use theys queries to detect misuse: ##################"
+Write-Host "Someone using our keyvault"
+Write-Host @"
+AzureDiagnostics 
+| where ResourceType  == "VAULTS"
+| where Resource  == "$keyvault"
+| where OperationName  in ("SecretGet","Authentication", "SecretList")
+| order by TimeGenerated desc
+"@
+Write-Host "#######################################################################################"
+Write-Host "Someone lopgging into AzureAD with our Service Principal (make sure to enable service principal signins)"
+Write-Host @"
+AADServicePrincipalSignInLogs
+| where ServicePrincipalName == "$servicePrincipal"
+"@
+
