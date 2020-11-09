@@ -1,0 +1,25 @@
+id: 10f1bb2c-e701-4605-8b5a-c4d057e3de07
+name: Detect admin consent into risky Azure AD application
+description: |
+  This rule will trigger once a admin consents to an application microsoft deemed risky
+severity: Low
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - AuditLogs
+queryFrequency: 2H
+queryPeriod: 7H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+relevantTechniques:
+query: |
+  AuditLogs
+  | where OperationName == 'Consent to application'
+  | extend applicationDetails = parse_json(TargetResources)[0]
+  | extend appname = parse_json(applicationDetails)['displayName']
+  | extend scope = parse_json(applicationDetails)['modifiedProperties'][4]["newValue"]
+  | extend reason = parse_json(applicationDetails)['modifiedProperties'][5]["newValue"]
+  | extend IsAdmin = parse_json(applicationDetails)['modifiedProperties'][0]["newValue"]
+  | where reason  == "\"Risky application detected\"" and 
+          IsAdmin == '"True"'
