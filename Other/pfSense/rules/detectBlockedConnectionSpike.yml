@@ -20,6 +20,7 @@ query: |
     // This query alerts whenever a spike of blocked connections is seen
     let average = materialize( 
         Syslog
+        | where TimeGenerated > ago(14d)
         | extend CSVFields  = split(SyslogMessage, ',')
         | extend Action = CSVFields[6]
         | where Action == "block"
