@@ -1,0 +1,23 @@
+id: 9f442cc0-d756-4760-ac65-fe43d4a15901
+name: Public Sharepoint site created
+description: |
+  Triggers if a public Sharepoint site was created.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: OfficeActivity
+queryFrequency: 1H
+queryPeriod: 1H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+relevantTechniques:
+query: |
+  let Translations = dynamic([
+    "Everyone except external users", 
+    "Iedereen behalve externe gebruikers"
+  ]);
+  OfficeActivity
+  | where OfficeWorkload == "SharePoint" or OfficeWorkload == "OneDrive"
+  | where Operation == "AddedToGroup"
+  | project TimeGenerated, Operation, UserId, Site_Url, TargetUserOrGroupName
+  | where TargetUserOrGroupName in (Translations)
