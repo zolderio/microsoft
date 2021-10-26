@@ -1,0 +1,40 @@
+id: 2e24704b-2c51-46b1-875f-0e9ed3d6ed35
+name: Detect MFASweep usage
+description: |
+  This rule will trigger once MFASweep is used against an existing account
+severity: Low
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - SigninLogs
+queryFrequency: 5M
+queryPeriod: 5M
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - InitialAccess
+relevantTechniques:
+  - TA0001
+query: |
+  let Apps = dynamic([
+    "1b730954-1685-4b74-9bfd-dac224a7b894", // Azure Active Directory PowerShell
+    "1950a258-227b-4e31-a9cf-717495945fc2", // Microsoft Azure PowerShell
+    "00000002-0000-0ff1-ce00-000000000000"  // Office 365 Exchange Online
+  ]);
+  let Auths = dynamic([
+    "Exchange ActiveSync",
+    "Browser",
+    "Exchange Web Services",
+    "Mobile Apps and Desktop clients"
+  ]);
+  SigninLogs 
+  | where AppId in (Apps)
+  | extend ClientAppUsed
+  | where ClientAppUsed in (Auths)
+  | summarize StartTime = min(TimeGenerated), EndTime = max(TimeGenerated), count() by ClientAppUsed, Identity, AlternateSignInName, ResultType, ResultDescription
+  | where (ClientAppUsed == "Browser" and count_ >= 2)
+    or (ClientAppUsed == "Exchange ActiveSync" and count_ >= 1)
+    or (ClientAppUsed == "Mobile Apps and Desktop clients" and count_ >= 2)
+    or (ClientAppUsed == "Exchange Web Services" and count_ >= 1)
+  | summarize StartTime = min(StartTime), EndTime = max(EndTime), count() by Identity, AlternateSignInName, ResultType, ResultDescription
+  | where count_ == 4
