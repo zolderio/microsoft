@@ -1,0 +1,43 @@
+id: d0e7f264-5510-4e55-812d-4ab2063928ad
+name: MFA policy exclusions changed
+description: |
+  This rule will trigger once a exclusion is added to your conditional access policy enforcing MFA.
+severity: Low
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes:
+      - AuditLogs
+queryFrequency: 1H
+queryPeriod: 1H
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+relevantTechniques:
+query: |
+  AuditLogs
+  | where OperationName == "Update conditional access policy"
+  | extend target = parse_json(TargetResources)
+  | extend newValue = todynamic(tostring(target[0]["modifiedProperties"][0]["newValue"]))
+  | extend oldValue = todynamic(tostring(target[0]["modifiedProperties"][0]["oldValue"]))
+  | where newValue["state"] == "enabled"
+  | where newValue["conditions"]["users"]["includeUsers"] has_any ("All")
+  | where newValue["grantControls"]["builtInControls"] has_any ("mfa")
+  | extend newExcludedUsers = newValue["conditions"]["users"]["excludeUsers"]
+  | extend newExcludedGroups = newValue["conditions"]["users"]["excludeGroups"]
+  | extend oldExcludedUsers = oldValue["conditions"]["users"]["excludeUsers"]
+  | extend oldExcludedGroups = oldValue["conditions"]["users"]["excludeGroups"]
+  | extend newExcludedRoles = newValue["conditions"]["users"]["excludeRoles"]
+  | extend oldExcludedRoles = oldValue["conditions"]["users"]["excludeRoles"]
+  | extend addedUsers = set_difference(newExcludedUsers, oldExcludedUsers)
+  | extend addedGroups = set_difference(newExcludedGroups, oldExcludedGroups)
+  | extend addedRoles = set_difference(newExcludedRoles, oldExcludedRoles)
+  | where array_length(addedUsers) > 0 or array_length(addedGroups) > 0 or array_length(addedRoles) > 0
+  | extend initiated = parse_json(InitiatedBy)
+  | mv-expand addedUsers, addedGroups, addedRoles
+  | extend addedUser = tostring(addedUsers)
+  | join kind=leftouter (IdentityInfo) on $left.addedUser == $right.AccountObjectId
+  | extend addedGroup = tostring(addedGroups)
+  | join kind=leftouter (IdentityInfo) on $left.addedGroup == $right.AccountObjectId
+  | extend addedRole = tostring(addedRoles)
+  | join kind=leftouter (IdentityInfo) on $left.addedRole == $right.AccountObjectId
+  | project TimeGenerated, OperationName, initiated["user"]["userPrincipalName"], addedUser, addedGroup, addedRole, AccountUPN
