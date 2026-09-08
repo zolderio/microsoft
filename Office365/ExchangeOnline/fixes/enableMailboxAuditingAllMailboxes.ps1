@@ -1,11 +1,35 @@
-    # Complete logs
-    $adminLogging = "AddFolderPermissions, ApplyRecord, Copy, Create, FolderBind, HardDelete, ModifyFolderPermissions, Move, MoveToDeletedItems, RecordDelete, RemoveFolderPermissions, SendAs, SendOnBehalf, SoftDelete, Update, UpdateFolderPermissions, UpdateCalendarDelegation, UpdateInboxRules"
+# Requires: Connect-ExchangeOnline
 
-    # Non-Complete logs UpdateCalendarDelegation NOT INCLUDED, should be according docs possible, but errors ATM.
-    $delegateLogging = "AddFolderPermissions, ApplyRecord, Create, FolderBind, HardDelete, ModifyFolderPermissions, Move, MoveToDeletedItems, RecordDelete, RemoveFolderPermissions, SendAs, SendOnBehalf, SoftDelete, Update, UpdateFolderPermissions, UpdateInboxRules"
+$base = @(
+    "ApplyRecord", "Create", "HardDelete", "MailItemsAccessed", "Move",
+    "MoveToDeletedItems", "RecordDelete", "SoftDelete", "Update",
+    "UpdateFolderPermissions", "UpdateInboxRules"
+)
 
-    # Complete logs
-    $ownerLogging =  "AddFolderPermissions, ApplyRecord, Create, HardDelete, MailboxLogin, ModifyFolderPermissions, Move, MoveToDeletedItems, RecordDelete, RemoveFolderPermissions, SoftDelete, Update, UpdateFolderPermissions, UpdateCalendarDelegation, UpdateInboxRules"
+$admin    = $base + @("Copy", "FolderBind", "Send", "SendAs", "SendOnBehalf", "UpdateCalendarDelegation")
+$delegate = $base + @("FolderBind", "SendAs", "SendOnBehalf")
+$owner    = $base + @("MailboxLogin", "SearchQueryInitiated", "Send", "UpdateCalendarDelegation")
 
-    # Set the logging for all mailboxes
-    Get-Mailbox -ResultSize Unlimited | Set-Mailbox -AuditEnabled $true -AuditOwner $ownerLogging -AuditDelegate $delegateLogging -AuditAdmin $adminLogging
+$failed = @()
+
+Get-Mailbox -ResultSize Unlimited -RecipientTypeDetails UserMailbox,SharedMailbox | ForEach-Object {
+    try {
+        Set-Mailbox -Identity $_.ExchangeGuid.ToString() `
+            -AuditEnabled $true `
+            -AuditAdmin $admin `
+            -AuditDelegate $delegate `
+            -AuditOwner $owner `
+            -ErrorAction Stop
+    }
+    catch {
+        $failed += "$($_.TargetObject): $($_.Exception.Message)"
+    }
+}
+
+if ($failed) {
+    Write-Warning "Could not update $($failed.Count) mailbox(es):"
+    $failed
+}
+else {
+    Write-Host "Audit logging updated for all mailboxes."
+}
